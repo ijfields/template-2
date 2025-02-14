@@ -1,11 +1,15 @@
-import type { NextPage } from 'next'
+import { TokenContract } from '@/components/TokenContract'
 
-const Home: NextPage = () => {
+export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold">Welcome to GUAPX DAO</h1>
+    <main className="min-h-screen p-8">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold mb-8">GUAPX DAO</h1>
+        <TokenContract 
+          onSuccess={() => console.log('Token deployed!')}
+          onError={(error) => console.error('Deploy failed:', error)}
+        />
+      </div>
     </main>
   )
 }
-
-export default Home
