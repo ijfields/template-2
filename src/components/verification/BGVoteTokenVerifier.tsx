@@ -1,70 +1,68 @@
+  import { FC, useCallback, useState } from 'react';
+  import { SmartContract } from "@thirdweb-dev/sdk";
 
-import { useCallback, useState } from 'react';
-import { SmartContract } from "@thirdweb-dev/sdk";
+  interface BGVoteTokenVerifierProps {
+    contract: SmartContract;
+    onVerificationComplete?: (result: VerificationResult) => void;
+  }
 
-interface BGVoteTokenVerifierProps {
-  contract: SmartContract;
-  onVerificationComplete?: (result: VerificationResult) => void;
-}
+  interface VerificationResult {
+    status: 'success' | 'error';
+    explorerUrl?: string;
+    message: string;
+  }
 
-interface VerificationResult {
-  status: 'success' | 'error';
-  explorerUrl?: string;
-  message: string;
-}
+  const GUAPX_PARAMS = {
+    name: "GUAPX Beta DAO Token",
+    symbol: "BGVOTE", 
+    maxSupply: 1000,
+    transferability: "NONE",
+    assetClass: "VOTE-001"
+  };
 
-const GUAPX_PARAMS = {
-  name: "GUAPX Beta DAO Token",
-  symbol: "BGVOTE",
-  maxSupply: 1000,
-  transferability: "NONE",
-  assetClass: "VOTE-001"
-};
-
-
-export const useTokenVerification = (contract: SmartContract) => {
-  const [verifying, setVerifying] = useState(false);
-  
-  const verifyToken = useCallback(async () => {
-    setVerifying(true);
-    
-    try {
-      // 1. Verify token parameters
-      const name = await contract.call("name");
-      const symbol = await contract.call("symbol");
-      const maxSupply = await contract.call("maxTotalSupply");
-      
-      // 2. Check against expected values
-      const isValid = 
-        name === GUAPX_PARAMS.name &&
-        symbol === GUAPX_PARAMS.symbol &&
-        maxSupply.toString() === GUAPX_PARAMS.maxSupply.toString();
-
-      return {
-        status: isValid ? 'success' : 'error',
-        explorerUrl: `https://explorer.guapx.io/token/${await contract.getAddress()}`,
-        message: isValid ? 'Token verified successfully' : 'Token parameters mismatch'
-      };
-
-    } catch (error) {
-      return {
-        status: 'error',
-        message: 'Verification failed: ' + (error instanceof Error ? error.message : 'Unknown error')
-      };
-    } finally {
-      setVerifying(false);
-    }
-  }, [contract]);
-
-  return { verifyToken, verifying };
-};
-  import { FC } from 'react';
-
-  import { useTokenVerification } from './useTokenVerification';
-  export const BGVoteTokenVerifier: FC<BGVoteTokenVerifierProps> = ({ contract }) => {
-    const { verifyToken, verifying } = useTokenVerification(contract);
+  export const BGVoteTokenVerifier: FC<BGVoteTokenVerifierProps> = ({ contract, onVerificationComplete }) => {
+    const [verifying, setVerifying] = useState(false);
     const [result, setResult] = useState<VerificationResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    const verifyToken = useCallback(async () => {
+      setVerifying(true);
+      try {
+        const name = await contract.call("name");
+        const symbol = await contract.call("symbol");
+        const maxSupply = await contract.call("maxTotalSupply");
+        const transferability = await contract.call("transferability");
+        const assetClass = await contract.call("assetClass");
+  
+        const isValid = 
+          name === GUAPX_PARAMS.name &&
+          symbol === GUAPX_PARAMS.symbol &&
+          maxSupply.toString() === GUAPX_PARAMS.maxSupply.toString() &&
+          transferability === GUAPX_PARAMS.transferability &&
+          assetClass === GUAPX_PARAMS.assetClass;
+
+        const verificationResult: VerificationResult = {
+          status: isValid ? 'success' : 'error',
+          explorerUrl: `https://explorer.guapx.io/token/${await contract.getAddress()}`,
+          message: isValid ? 'Token verified successfully' : 'Token parameters mismatch'
+        };
+
+        setResult(verificationResult);
+        onVerificationComplete?.(verificationResult);
+        return verificationResult;
+
+      } catch (error) {
+        const errorResult: VerificationResult = {
+          status: 'error',
+          message: 'Verification failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+        };
+        setResult(errorResult);
+        onVerificationComplete?.(errorResult);
+        return errorResult;
+      } finally {
+        setVerifying(false);
+      }
+    }, [contract, onVerificationComplete]);
 
     const handleVerification = async () => {
       setError(null);
@@ -105,9 +103,9 @@ export const useTokenVerification = (contract: SmartContract) => {
             <p className="font-medium">{result.message}</p>
             {result.explorerUrl && (
               <a href={result.explorerUrl} 
-               target="_blank" 
-               rel="noopener noreferrer" 
-               className="text-blue-500 hover:underline mt-2 block">
+       target="_blank" 
+       rel="noopener noreferrer" 
+       className="text-blue-500 hover:underline mt-2 block">
                 View on Explorer
               </a>
             )}
@@ -116,4 +114,3 @@ export const useTokenVerification = (contract: SmartContract) => {
       </div>
     );
   };
-};
