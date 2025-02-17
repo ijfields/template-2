@@ -1,4 +1,5 @@
 import { SmartContract } from "@thirdweb-dev/sdk";
+import { getBytecode } from '../utils/contract';
 
 interface VerificationResult {
   verified: boolean;
@@ -34,7 +35,7 @@ export class BGVoteTokenVerifier {
       }
 
       // 1. Get contract bytecode
-
+      const bytecode = await getBytecode(this.contract.getAddress())
       
       // 2. Verify contract source matches deployed bytecode
       const verificationResult = await this.verifyBytecode(bytecode);
